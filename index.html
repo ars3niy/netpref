@@ -1,0 +1,1175 @@
+<html>
+    <head>
+        <title>WebSocket Pref</title>
+        <meta charset="UTF-8">
+    </head>
+    <body onload="init()">
+        <script type="text/javascript" src="config.js"></script>
+        <script type="text/javascript" src="prefprotocol.js"></script>
+        <script type="text/javascript" src="translation.js"></script>
+        <script type="text/javascript" src="cards.js"></script>
+        <script type="text/javascript" src="score.js"></script>
+        
+        <div id="pageHeader">
+        <table>
+        <tr>
+        <td>
+        <input id="ToggleDebugButton" type="button" onClick="toggleDebug();"/>
+        </td>
+        <td id="languageButtons">
+        </td>
+        <td>
+        <span id="styleLabel">Card pictures:</span>
+        <select id="cardSetChoice" onChange="updateCardImages()">
+        </select>
+        </td>
+        </tr>
+        <tr><td>
+        <textarea readonly id="debugTextArea" style="width:400px;height:100px;display:none"></textarea>
+        </td></tr>
+        </table>
+        </div>
+        <div id="connectionControls">
+            <table id="lobbyControls">
+            <tr>
+            <td id="PlayersColon1"> </td>
+            <td id="GamesColon"> </td>
+            </tr>
+            <tr>
+            <td id="PlayersColumn2"><textarea readonly id="playerListArea" style="width:160px;height:100px"></textarea></td>
+            <td><select readonly id="gameListArea" style="width:160px; height:100px" size=10></select></td>
+            </tr>
+            <tr>
+            <td id="PlayersColumn3"></td>
+            <td><input type="button" id="JoinButton" onClick="JoinGame();" /></td>
+            </tr>
+            </table>
+            <p id="initialConnectionControls">
+                &nbsp;
+                <input type="text" id="inputServer" style="display:none"/>
+                &nbsp;
+                <input type="text" id="inputName"/>
+                <input type="button" id="ConnectButton" onClick="ConnectToServer();"/>
+            </p>
+
+            <div id="lobbyControls3"></div>
+
+            <p></p>
+            <table id="lobbyControls2">
+                <tr><td id="GameNameColon">text</td></tr>
+                <tr><td><input type="text" id="inputGameName"/></td></tr>
+                <tr><td id="GameTypeColon">text</td></tr>
+                <tr><td><select id="gameTypeList"> </select></td></tr>
+                <tr><td><input type="button" id="CreateButton" onClick="CreateGame();"/></td></tr>
+            </table>
+        </div>
+        
+        <div id="waitGameStartOutput">
+        <h2 id="waitingForPlayersToJoin"> </h2>
+        <h4 id="PlayersColon2"> </h4>
+        <ul id="startGamePlayerList">
+        </ul>
+        </div>
+
+        <div id="waitPlayerOutput">
+        <h2 id="waitingForPlayers"> </h2>
+        <ul id="waitPlayerList">
+        </ul>
+        </div>
+        
+        <div id="mainGameOutput" style="margin: auto">
+        <canvas id="gameCanvas" width="100" height="100"></canvas>
+        <input type="button" id="passButton"
+               style="position:absolute; display:none; font-size:20px"
+               onClick="pass();"/>
+        <input type="button" id="contractButton"
+               style="position:absolute; display:none; font-size:20px"
+               onClick="contract();"/>
+        <input type="button" id="orderSpadeButton"
+               style="position:absolute; display:none; "
+               onClick="orderSpade();"/>
+        <input type="button" id="orderClubButton"
+               style="position:absolute; display:none; "
+               onClick="orderClub();"/>
+        <input type="button" id="orderDiamondButton"
+               style="position:absolute; display:none; "
+               onClick="orderDiamond();"/>
+        <input type="button" id="orderHeartButton"
+               style="position:absolute; display:none; "
+               onClick="orderHeart();"/>
+        <input type="button" id="orderNoTrumpButton"
+               style="position:absolute; display:none; "
+               onClick="orderNoTrump();"/>
+        <input type="button" id="readyButton"
+               style="position:absolute; display:none; font-size:20px"
+               onClick="Game_Ready();"/>
+        <input type="button" id="moveButton"
+               style="position:absolute; display:none; font-size:20px"
+               onClick="makeMove();"/>
+        <input type="button" id="finishButton"
+               style="position:absolute; display:none; font-size:20px"
+               onClick="Game_ProposeFinish();"/>
+        <input type="button" id="openButton"
+               style="position:absolute; display:none; font-size:20px"
+               onClick="openOrClose();"/>
+        <input type="button" id="shareButton"
+               style="position:absolute; display:none; font-size:20px"
+               onClick="shareCards();"/>
+        <input type="button" id="scoreButton"
+               style="position:absolute; display:none; font-size:20px"
+               onClick="showScore();"/>
+        <input type="button" id="closeButton"
+               style="position:absolute; display:none; font-size:20px"
+               onClick="closeScore();"/>
+        </div>
+
+        <script type="text/javascript">
+        
+const canvasWidth = (800*cardWidth)/78;
+const canvasHeight = (500*cardHeight)/106;
+const backgroundColour = "#00AA50";
+const showPlayers = false;
+
+function toggleDebug()
+{
+    debugArea = document.getElementById("debugTextArea");
+    if (debugArea.style.display == "none")
+        debugArea.style.display = "block";
+    else
+        debugArea.style.display = "none";
+}
+
+var g_enterValueIncrementText;
+
+function translate()
+{
+    document.getElementById("ToggleDebugButton").value = _("Toggle debug");
+    document.getElementById("styleLabel").textContent = _("Card style:");
+    var initialControls = document.getElementById("initialConnectionControls");
+    if (Config.serverName == "") {
+        initialControls.childNodes[0].textContent = _("Server:") + " ";
+    }
+    initialControls.childNodes[2].textContent = " " + _("Name:") + " ";
+    document.getElementById("ConnectButton").value = _("Connect");
+
+    document.getElementById("PlayersColon1").childNodes[0].textContent = _("Players:");
+    document.getElementById("GamesColon").childNodes[0].textContent = _("Games:");
+    document.getElementById("JoinButton").value = _("Join game");
+
+    document.getElementById("GameNameColon").childNodes[0].textContent = _("Game name:");
+    document.getElementById("GameTypeColon").childNodes[0].textContent = _("Game type:");
+    document.getElementById("CreateButton").value = _("Create game");
+    
+    document.getElementById("waitingForPlayersToJoin").childNodes[0].textContent =
+        _("Waiting for players to join...");
+    document.getElementById("PlayersColon2").childNodes[0].textContent = _("Players:");
+
+    document.getElementById("waitingForPlayers").childNodes[0].textContent =
+        _("Waiting for players...");
+    
+    document.getElementById("passButton").value = _("Pass");
+    document.getElementById("contractButton").value =_("Contract");
+    document.getElementById("orderSpadeButton").value =_("Spade");
+    document.getElementById("orderClubButton").value =_("Club");
+    document.getElementById("orderDiamondButton").value =_("Diamond");
+    document.getElementById("orderHeartButton").value =_("Heart");
+    document.getElementById("orderNoTrumpButton").value =_("NT/Misere");
+    document.getElementById("readyButton").value = _("Start round");
+    document.getElementById("moveButton").value = _("Put card");
+    document.getElementById("openButton").value = _("Open cards");
+    document.getElementById("finishButton").value = _("Finish round");
+    document.getElementById("shareButton").value = _("Let partner move for me");
+    document.getElementById("scoreButton").value = _("Score");
+    document.getElementById("closeButton").value = _("Close");
+    g_enterValueIncrementText = _("Points to add");
+}
+
+function SetLanguage(name)
+{
+    Translate_SetLanguage(name);
+    translate();
+}
+
+function updateCardImages()
+{
+    var listbox = document.getElementById("cardSetChoice");
+    var setName = listbox.options[listbox.selectedIndex].value
+    Cards_LoadCardImages(setName, function() {
+        if (lastGameState != null)
+            onDisplayGameState(lastGameState.state, lastGameState.values);
+    });
+}
+
+function init()
+{
+    document.getElementById("playerListArea").value = "";
+    document.getElementById("debugTextArea").value = "";
+    document.getElementById("lobbyControls").style.display = "none";
+    document.getElementById("lobbyControls2").style.display = "none";
+    document.getElementById("lobbyControls3").style.display = "none";
+    document.getElementById("waitGameStartOutput").style.display = "none";
+    document.getElementById("waitPlayerOutput").style.display = "none";
+    document.getElementById("mainGameOutput").style.display = "none";
+    document.body.style.backgroundColor = backgroundColour;
+    
+    var langButtonsTd = document.getElementById("languageButtons");
+    var languages = Translate_GetLanguages();
+    for (var i = 0; i < languages.length; i++) {
+        var button = document.createElement("input");
+        button.setAttribute("type", "button");
+        button.setAttribute("value", languages[i].name);
+        button.setAttribute("onClick", "SetLanguage(\"" + languages[i].id + "\");");
+        langButtonsTd.appendChild(button);
+    }
+
+    var cardSetChoice = document.getElementById("cardSetChoice");
+    for (var cardSet in Config.cardSets)
+        cardSetChoice.options[cardSetChoice.options.length] = new Option(Config.cardSets[cardSet], cardSet);
+
+    SetLanguage("default");
+    document.getElementById("gameCanvas").addEventListener("mousedown", onMouseDown);
+    updateCardImages()
+    
+    if (! showPlayers) {
+        document.getElementById("PlayersColon1").style.display = "none";
+        document.getElementById("PlayersColumn2").style.display = "none";
+        document.getElementById("PlayersColumn3").style.display = "none";
+    }
+
+    var canvas = document.getElementById("gameCanvas");
+    canvas.width = canvasWidth;
+    canvas.height = canvasHeight;
+}
+
+function ConnectToServer()
+{
+    if (! Game_IsConnected()) {
+        var inputServer = document.getElementById("inputServer");
+        var inputName = document.getElementById("inputName");
+        var server = Config.serverName;
+        if (server == "")
+            server = inputServer.value;
+        if (server == "") {
+            alert(_("Enter server"));
+        }
+        else if (inputName.value == "") {
+            alert(_("Enter your name"));
+        } else {
+            Game_Init("debugTextArea", "playerListArea", "gameListArea", "gameTypeList",
+                        onConnectToLobby, onDisconnectFromServer);
+            Game_Connect("ws://" + server + ":8765", inputName.value);
+        }
+    } else
+        alert(_("Already connected"));
+}
+
+function DisconnectFromServer()
+{
+    clearGameState();
+    if (Game_IsConnected())
+        Game_Disconnect();
+    else
+        alert(_("Not connected"));
+}
+
+function onCantJoin()
+{
+    alert(_("Failed to join game (maybe it's full)"));
+}
+
+function onCantCreate()
+{
+    alert("Failed to create game");
+}
+
+function ShowWaitingForStart(values)
+{
+    document.getElementById("waitGameStartOutput").style.display = "block";
+    document.getElementById("waitPlayerOutput").style.display = "none";
+    document.getElementById("mainGameOutput").style.display = "none";
+
+    var playerList = document.getElementById("startGamePlayerList");
+    while (playerList.children.length > 0)
+        playerList.removeChild(playerList.childNodes[0]);
+    
+    for (var i = 0; i < values.length; i++)
+        if (values[i][0] == "player") {
+            var name = values[i][1];
+            var listItem = document.createElement("li");
+            var textNode = document.createTextNode(name);
+            listItem.appendChild(textNode);
+            playerList.appendChild(listItem);
+        }
+}
+
+function ShowWaitingForPlayers(values)
+{
+    document.getElementById("waitGameStartOutput").style.display = "none";
+    document.getElementById("waitPlayerOutput").style.display = "block";
+    document.getElementById("mainGameOutput").style.display = "none";
+
+    var playerList = document.getElementById("waitPlayerList");
+    while (playerList.children.length > 0)
+        playerList.removeChild(playerList.childNodes[0]);
+    
+    for (var i = 0; i < values.length; i++)
+        if (values[i][0] == "missing") {
+            var name = values[i][1];
+            var listItem = document.createElement("li");
+            var textNode = document.createTextNode(name);
+            listItem.appendChild(textNode);
+            playerList.appendChild(listItem);
+        }
+}
+
+const borderSpacing = 10;
+const nameHeight = 20;
+const cardSpacing = 33;
+
+const POS_ME = 0;
+const POS_WEST = 1;
+const POS_EAST = 2;
+const POS_BUY = 3;
+const POS_OTHER = 4;
+
+function getCardsWidth(position, cards)
+{
+    return cardWidth + (cards.length-1)*cardSpacing;
+}
+
+function drawCards(ctx, position, cards)
+{
+    var width = getCardsWidth(position, cards);
+    var x = -1;
+    var y = -1;
+    if (position == POS_ME) {
+        x = (canvasWidth - width)/2;
+        y = canvasHeight - cardHeight - borderSpacing;
+    } else if (position == POS_WEST) {
+        x = borderSpacing;
+        y = borderSpacing + nameHeight + borderSpacing;
+    } else if (position == POS_EAST) {
+        x = canvasWidth - width - borderSpacing;
+        y = borderSpacing + nameHeight + borderSpacing;
+    } else if (position == POS_BUY) {
+        x = (canvasWidth - width)/2;
+        y = (canvasHeight - cardHeight)/2;
+    } else
+        return;
+    
+    for (var i = 0; i < cards.length; i++) {
+        Cards_DrawCard(ctx, x, y, cards[i], position, 1);
+        x += cardSpacing;
+    }
+}
+
+function drawNames(ctx, westName, eastName)
+{
+    ctx.font = nameHeight + "px Arial";
+    ctx.fillStyle = "black";
+    
+    ctx.textAlign = "left";
+    ctx.fillText(westName, borderSpacing, borderSpacing + nameHeight);
+    ctx.textAlign = "right";
+    ctx.fillText(eastName, canvasWidth - borderSpacing, borderSpacing + nameHeight);
+}
+
+const statementHeight = 30;
+
+function drawStatement(ctx, position, s, hasCards)
+{
+    ctx.font = statementHeight + "px Arial";
+    ctx.fillStyle = "black";
+    var x = 0;
+    var y = 0;
+    var ch = hasCards ? 1 : 0;
+    
+    if (position == POS_ME) {
+        ctx.textAlign = "center";
+        x = canvasWidth/2;
+        y = canvasHeight - borderSpacing - (cardHeight + borderSpacing)*ch - statementHeight/2;
+    } else if (position == POS_WEST) {
+        ctx.textAlign = "left";
+        x = borderSpacing;
+        y = borderSpacing + nameHeight + (borderSpacing + cardHeight)*ch + borderSpacing + statementHeight;
+    } else if (position == POS_EAST) {
+        ctx.textAlign = "right";
+        x = canvasWidth - borderSpacing;
+        y = borderSpacing + nameHeight + (borderSpacing + cardHeight)*ch + borderSpacing + statementHeight;
+    } else return;
+    
+    ctx.fillText(s, x, y);
+}
+
+function drawChoice(ctx, pos, choice)
+{
+    var display = "";
+    if (choice = "pass")
+        display = "Pass";
+    else
+        display = "Contract";
+    drawStatement(ctx, pos, _(display), true);
+}
+
+function showButtonInCenter(button)
+{
+    var canvasArea = document.getElementById("mainGameOutput");
+    button.style.display = "block";
+    button.style.top = canvasArea.offsetTop + (canvasHeight - button.clientHeight)/2;
+    button.style.left = canvasArea.offsetLeft + (canvasWidth - button.clientWidth)/2;
+}
+
+function allowMove(contract, moves, cards, card)
+{
+    for (var firstMoveInd = 0; firstMoveInd < 3; firstMoveInd++)
+        if ((moves[firstMoveInd] != null) && (moves[(firstMoveInd+2)%3] == null))
+            break;
+    if (firstMoveInd == 3)
+        // Nobody moved yet
+        return true;
+    
+    var moveSuit = moves[firstMoveInd].charAt(1);
+    var trumpSuit = "n";
+    if (contract && (contract != "misere"))
+        trumpSuit = contract.charAt(1);
+    
+    if (card.charAt(1) == moveSuit)
+        // Following the suit
+        return true;
+        
+    // Not following the suit
+    var haveTrump = false;
+    for (var i = 0; i < cards.length; i++) {
+        var s = cards[i].charAt(1);
+        if (s == moveSuit)
+            // Not following the suit while could
+            return false;
+        if (s == trumpSuit)
+            haveTrump = true;
+    }
+    
+    if (haveTrump && (card.charAt(1) != trumpSuit))
+        return false;
+    
+    return true;
+}
+
+var lastTrick = null;
+
+function allMoved(moves)
+{
+    for (var i = 0; i < moves.length; i++)
+        if (moves[i] == null)
+            return false;
+    return true;
+}
+
+const TrickAreaW = 70;
+const TrickAreaH = 70;
+const TrickAreaColor = "#FFFFAA";
+const TrickFontSize = 20;
+const TrickAreaLeft = 100;
+
+function drawTricks(ctx, trickCount)
+{
+    ctx.fillStyle = TrickAreaColor;
+    ctx.fillRect(TrickAreaLeft, canvasHeight - borderSpacing - TrickAreaH,
+                 TrickAreaW, TrickAreaH);
+    ctx.strokeStyle = "black";
+    ctx.strokeRect(TrickAreaLeft, canvasHeight - borderSpacing - TrickAreaH,
+                   TrickAreaW, TrickAreaH);
+    
+    ctx.font = TrickFontSize + "px Arial";
+    ctx.fillStyle = "black";
+
+    ctx.textAlign = "center";
+    ctx.fillText(trickCount[0], TrickAreaLeft + TrickAreaW/2,
+                 canvasHeight - 2*borderSpacing);
+
+    ctx.textAlign = "left";
+    ctx.fillText(trickCount[1], TrickAreaLeft + borderSpacing,
+                 canvasHeight - TrickAreaH + TrickFontSize);
+    
+    ctx.textAlign = "right";
+    ctx.fillText(trickCount[2], TrickAreaLeft + TrickAreaW - borderSpacing,
+                 canvasHeight - TrickAreaH + TrickFontSize);
+}
+
+var MyCardsOpen = false;
+var myLastCardCount = 0;
+var partnerLastCardCount = 0;
+var positionToMove = null;
+var playerToMove = null;
+var score = null;
+var scoreOpen = false;
+var scoreVisible = false;
+var lastGameState = null;
+var g_myPos = -1;
+var g_westPos = -1;
+var g_eastPos = -1;
+var g_relPos = [-1, -1, -1];
+
+function clearGameState()
+{
+    g_myPos = -1;
+    g_westPos = -1;
+    g_eastPos = -1;
+    g_relPos = [-1, -1, -1];
+    lastGameState = null;
+}
+
+function ShowButtonAboveFinish(finishButton, button)
+{
+    button.style.display = "block";
+    button.style.left = borderSpacing;
+    var y = canvasHeight - borderSpacing - TrickAreaH - borderSpacing - button.clientHeight;
+    if (finishButton.style.display != "none")
+        y -= borderSpacing + finishButton.clientHeight;
+    button.style.top = y;
+}
+
+function ShowScoreButton(button)
+{
+    button.style.display = "block";
+    button.style.left = borderSpacing;
+    button.style.top = canvasHeight - borderSpacing - button.clientHeight;
+}
+
+function ShowCloseScoreButton()
+{
+    var button = document.getElementById("closeButton");
+    button.style.display = "block";
+    
+    button.style.top = canvasHeight - borderSpacing - cardHeight/2 - button.clientHeight/2;
+    button.style.left = (canvasWidth - button.clientWidth)/2;
+}
+
+function updateGameScore(p, g, v)
+{
+    var relP = Score_InitP();
+    var relG = Score_InitG();
+    var relV = Score_InitV();
+    
+    for (var i = 0; i < p.length; i++) {
+        relP[g_relPos[i]] = p[i];
+        relG[g_relPos[i]] = g[i];
+        for (var j = 0; j < p.length; j++)
+            if (j != i)
+                relV[g_relPos[i]][g_relPos[j]] = v[i][j];
+    }
+    
+    Score_UpdateP(score, relP);
+    Score_UpdateG(score, relG);
+    Score_UpdateV(score, relV);
+}
+
+function ShowRealGameState(state, values)
+{
+    lastGameState = {state: state, values: values};
+
+    var passButton = document.getElementById("passButton");
+    var contractButton = document.getElementById("contractButton");
+    var readyButton = document.getElementById("readyButton");
+    var moveButton = document.getElementById("moveButton");
+    var finishButton = document.getElementById("finishButton");
+    var openButton = document.getElementById("openButton");
+    var shareButton = document.getElementById("shareButton");
+    var scoreButton = document.getElementById("scoreButton");
+
+    document.getElementById("waitGameStartOutput").style.display = "none";
+    document.getElementById("waitPlayerOutput").style.display = "none";
+    document.getElementById("mainGameOutput").style.display = "block";
+    document.getElementById("mainGameOutput").style.width = canvasWidth;
+    passButton.style.display = "none";
+    contractButton.style.display = "none";
+    readyButton.style.display = "none";
+    moveButton.style.display = "none";
+    finishButton.style.display = "none";
+    openButton.style.display = "none";
+    shareButton.style.display = "none";
+    scoreButton.style.display = "none";
+    document.getElementById("closeButton").style.display = "none";
+    hideOrderButtons();
+    
+    var canvas = document.getElementById("gameCanvas");
+    var ctx = canvas.getContext("2d");
+    
+    ctx.fillStyle = backgroundColour;
+    ctx.fillRect(0, 0, canvasWidth, canvasHeight);
+    
+    var cards = [[], [], []];
+    var buy = [];
+    var speaker = -1;
+    var choice = [null, null, null];
+    var ready = [null, null, null];
+    var names = ["", "", ""];
+    var tomove = null;
+    var moves = [null, null, null];
+    var trickCount = [null, null, null];
+    var wantFinish = [false, false, false];
+    var shares = [null, null, null];
+    var p = Score_InitP();
+    var g = Score_InitG();
+    var v = Score_InitV();
+    
+    for (var i = 0; i < values.length; i++) {
+        var param = values[i][0];
+        var value = values[i][1];
+        if (param == "position") {
+            g_myPos = parseInt(value);
+            g_westPos = (g_myPos+1) % 3;
+            g_eastPos = (g_myPos+2) % 3;
+            g_relPos[g_myPos] = POS_ME;
+            g_relPos[g_westPos] = POS_WEST;
+            g_relPos[g_eastPos] = POS_EAST;
+        } else if (param == "player0")
+            names[0] = value;
+        else if (param == "player1")
+            names[1] = value;
+        else if (param == "player2")
+            names[2] = value;
+        else if (param == "cards0")
+            cards[0] = Cards_ParseCards(value);
+        else if (param == "cards1")
+            cards[1] = Cards_ParseCards(value);
+        else if (param == "cards2")
+            cards[2] = Cards_ParseCards(value);
+        else if (param == "buy")
+            buy = Cards_ParseCards(value);
+        else if (param == "speaker")
+            speaker = parseInt(value);
+        else if (param == "choice0")
+            choice[0] = value;
+        else if (param == "choice1")
+            choice[1] = value;
+        else if (param == "choice2")
+            choice[2] = value;
+        else if (param == "ready0")
+            ready[0] = parseInt(value);
+        else if (param == "ready1")
+            ready[1] = parseInt(value);
+        else if (param == "ready2")
+            ready[2] = parseInt(value);
+        else if (param == "tomove")
+            tomove = parseInt(value);
+        else if (param == "move0")
+            moves[0] = value;
+        else if (param == "move1")
+            moves[1] = value;
+        else if (param == "move2")
+            moves[2] = value;
+        else if (param == "take0")
+            trickCount[0] = value;
+        else if (param == "take1")
+            trickCount[1] = value;
+        else if (param == "take2")
+            trickCount[2] = value;
+        else if (param == "wantfinish") {
+            var whoWants = value.split(" ");
+            for (var j = 0; j < whoWants.length; j++) {
+                wantFinish[parseInt(whoWants[j])] = true;
+            }
+        }
+        else if (param == "share0")
+            shares[0] = parseInt(value);
+        else if (param == "share1")
+            shares[1] = parseInt(value);
+        else if (param == "share2")
+            shares[2] = parseInt(value);
+        else if ((param == "p0") || (param == "p1") || (param == "p2"))
+            p[parseInt(param.charAt(1))] = parseInt(value);
+        else if ((param == "g0") || (param == "g1") || (param == "g2"))
+            g[parseInt(param.charAt(1))] = parseInt(value);
+        else if ((param == "v01") || (param == "v02") ||
+                 (param == "v10") || (param == "v12") ||
+                 (param == "v20") || (param == "v21"))
+            v[parseInt(param.charAt(1))][parseInt(param.charAt(2))] = parseInt(value);
+    }
+    
+    drawNames(ctx, names[g_westPos], names[g_eastPos]);
+    updateGameScore(p, g, v);
+    
+    if (state == "Trade") {
+        lastTrick = null;
+        Cards_ResetRaisedCards();
+        ctx.font = "30px Arial";
+        ctx.fillStyle = "black";
+        ctx.textAlign = "left";
+        ctx.fillText(_("Bidding"), borderSpacing, canvasHeight - borderSpacing);
+        
+        if ((choice[0] != null) || (choice[1] != null) || (choice[2] != null)) {
+            for (var i = 0; i < 3; i++)
+                if (choice[i] != null)
+                    drawChoice(ctx, g_relPos[i], choice[i]);
+        } else if (speaker >= 0)
+            drawStatement(ctx, g_relPos[speaker], _("First to speak"), true);
+            
+        if (choice[g_myPos] == null) {
+            passButton.style.top = canvasHeight - borderSpacing - cardHeight;
+            passButton.style.left = canvasWidth/2 + getCardsWidth(0, cards[g_myPos])/2 + borderSpacing;
+            passButton.style.display = "block";
+        } else
+            passButton.style.display = "none";
+        if ((choice[g_westPos] == "pass") && (choice[g_eastPos] == "pass")) {
+            contractButton.style.top = canvasHeight - borderSpacing - cardHeight + passButton.clientHeight + borderSpacing;
+            contractButton.style.left = canvasWidth/2 + getCardsWidth(0, cards[g_myPos])/2 + borderSpacing;
+            contractButton.style.display = "block";
+        }
+        MyCardsOpen = false;
+        ShowScoreButton(scoreButton);
+    } else if ((state == "WaitDiscard") && (choice[g_myPos] != "pass")) {
+        lastTrick = null;
+        Cards_AllowRaiseCards(2, [POS_ME]);
+        if (Cards_GetRaisedCards(POS_ME).length == 2)
+            showOrderButtons();
+        else
+            drawStatement(ctx, 0, _("Discard 2 cards"), true);
+            
+        if (MyCardsOpen)
+            openButton.value = _("Close cards");
+        else
+            openButton.value = _("Open cards");
+        openButton.style.display = "block";
+        openButton.style.left = borderSpacing;
+        openButton.style.top = canvasHeight - borderSpacing - TrickAreaH - borderSpacing - openButton.clientHeight;
+        ShowScoreButton(scoreButton);
+    } else if (state == "WaitVist") {
+        lastTrick = null;
+        Cards_ResetRaisedCards();
+        if (ready[g_myPos] == 0) {
+            showButtonInCenter(readyButton);
+        }
+        for (var i = 0; i < 3; i++)
+            if (ready[i] == 0)
+                drawStatement(ctx, g_relPos[i], _("Not ready"), true);
+            else if (ready[i] == 1)
+                drawStatement(ctx, g_relPos[i], _("Ready"), true);
+        ShowScoreButton(scoreButton);
+    } else if (state == "WaitMove") {
+        drawTricks(ctx, [trickCount[g_myPos], trickCount[g_westPos], trickCount[g_eastPos]]);
+        if (!wantFinish[tomove])
+            drawStatement(ctx, g_relPos[tomove], _("To move"), true);
+
+        var contract = null;
+        for (var i = 0; i < 3; i++)
+            if (choice[i] != null)
+                contract = choice[i];
+        
+        var partnerPos = null;
+        if ((contract != null) && (choice[g_myPos] == null))
+            for (var i = 0; i < choice.length; i++)
+                if ((i != g_myPos) && (choice[i] == null))
+                    partnerPos = i;
+        
+        if (allMoved(moves)) {
+            lastTrick = moves;
+            if (tomove == g_myPos)
+                moves = [null, null, null];
+        }
+        
+        if (cards[g_myPos].length != myLastCardCount)
+            Cards_ResetRaisedCardsFor(POS_ME);
+        if ((partnerPos != null) && (cards[partnerPos].length != partnerLastCardCount))
+            Cards_ResetRaisedCardsFor(g_relPos[partnerPos]);
+        
+        var myRaisedCards = Cards_GetRaisedCards(POS_ME);
+        if (myRaisedCards.length == 1) {
+            if (allowMove(contract, moves, cards[g_myPos], myRaisedCards[0].card)) {
+                if (tomove == g_myPos) {
+                    playerToMove = tomove;
+                    positionToMove = g_relPos[tomove];
+                    showButtonInCenter(moveButton);
+                }
+            } else {
+                if (moves[g_myPos] == null)
+                    Cards_ResetRaisedCardsFor(POS_ME);
+            }
+        }
+        var partnerRaisedCards = [];
+        if (partnerPos != null)
+            partnerRaisedCards = Cards_GetRaisedCards(g_relPos[partnerPos]);
+        if (partnerRaisedCards.length == 1) {
+            if (allowMove(contract, moves, cards[partnerPos], partnerRaisedCards[0].card)) {
+                if (tomove == partnerPos) {
+                    playerToMove = tomove;
+                    positionToMove = g_relPos[tomove];
+                    showButtonInCenter(moveButton);
+                }
+            } else {
+                if (moves[partnerPos] == null)
+                    Cards_ResetRaisedCardsFor(POS_ME);
+            }
+        }
+        
+        var posToMoveFor = [POS_ME];
+        if ((partnerPos != null) && (shares[partnerPos] == g_myPos))
+            posToMoveFor.push(g_relPos[partnerPos]);
+        
+        Cards_AllowRaiseCards(1, posToMoveFor);
+        myLastCardCount = cards[g_myPos].length;
+        if (partnerPos != null)
+            partnerLastCardCount = cards[partnerPos].length;
+        
+        if (wantFinish[g_westPos])
+            drawStatement(ctx, POS_WEST, _("Agreed to finish"), true);
+        if (wantFinish[g_eastPos])
+            drawStatement(ctx, POS_EAST, _("Agreed to finish"), true);
+        if (wantFinish[g_myPos])
+            drawStatement(ctx, POS_ME, _("Agreed to finish"), true);
+        else {
+            finishButton.style.display = "block";
+            finishButton.style.left = borderSpacing;
+            finishButton.style.top = canvasHeight - borderSpacing - TrickAreaH - borderSpacing - finishButton.clientHeight;
+        }
+        
+        if (!MyCardsOpen) {
+            openButton.value = _("Open cards");
+            ShowButtonAboveFinish(finishButton, openButton);
+        } else if ((contract != null) && (choice[g_myPos] == null) && (shares[g_myPos] == null)) {
+            ShowButtonAboveFinish(finishButton, shareButton);
+        }
+        ShowScoreButton(scoreButton);
+    } else if (state == "WaitRoundStart") {
+        drawTricks(ctx, [trickCount[g_myPos], trickCount[g_westPos], trickCount[g_eastPos]]);
+        Cards_ResetRaisedCards();
+        lastTrick = null;
+        for (var i = 0; i < 3; i++)
+            if (ready[i] == 1)
+                drawStatement(ctx, g_relPos[i], _("Ready"), false);
+            else if (ready[i] == 0)
+                if (i == g_myPos) {
+                    readyButton.style.display = "block";
+                    readyButton.style.top = canvasHeight - borderSpacing - cardHeight/2 - readyButton.clientHeight/2;
+                    readyButton.style.left = (canvasWidth - readyButton.clientWidth)/2;
+                } else
+                    drawStatement(ctx, g_relPos[i], _("Not ready"), false);
+        scoreOpen = false;
+    } else {
+        Cards_ResetRaisedCards();
+    }
+    
+    if (scoreOpen || (state == "WaitRoundStart")) {
+        Score_DrawScore(ctx, score, canvasWidth);
+        scoreVisible = true;
+    } else
+        scoreVisible = false;
+
+    if (scoreOpen)
+        ShowCloseScoreButton();
+    
+    Cards_ClearPainted();
+
+    for (var i = 0; i < 3; i++)
+        if (cards[i].length > 0)
+            drawCards(ctx, g_relPos[i], cards[i]);
+    
+    if (moves[g_myPos] != null)
+        Cards_DrawCard(ctx, (canvasWidth - cardWidth)/2,
+                 (canvasHeight + borderSpacing)/2, moves[g_myPos], POS_OTHER, 1);
+    if (moves[g_westPos] != null)
+        Cards_DrawCard(ctx, (canvasWidth - borderSpacing)/2 - cardWidth,
+                 (canvasHeight - borderSpacing)/2 - cardHeight, moves[g_westPos], POS_OTHER, 1);
+    if (moves[g_eastPos] != null)
+        Cards_DrawCard(ctx, (canvasWidth + borderSpacing)/2,
+                 (canvasHeight - borderSpacing)/2 - cardHeight, moves[g_eastPos], POS_OTHER, 1);
+    
+    if (lastTrick != null) {
+        var cw = (cardWidth*3)/4;
+        var ch = (cardHeight*3)/4;
+        Cards_DrawCard(ctx, canvasWidth - 2*borderSpacing - 2*cw,
+                 canvasHeight - borderSpacing - ch - cardSpacing,
+                 lastTrick[g_westPos], POS_OTHER, 0.75);
+        Cards_DrawCard(ctx, canvasWidth - borderSpacing - cw,
+                 canvasHeight - borderSpacing - ch - cardSpacing,
+                 lastTrick[g_eastPos], POS_OTHER, 0.75);
+        Cards_DrawCard(ctx, canvasWidth - borderSpacing - cw - borderSpacing/2 - cw/2,
+                 canvasHeight - borderSpacing - ch,
+                 lastTrick[g_myPos], POS_OTHER, 0.75);
+    }
+    
+    if (buy.length > 0)
+        drawCards(ctx, 3, buy);
+    
+}
+
+function pass()
+{
+    Game_Pass();
+}
+
+function contract()
+{
+    Game_OrderContract();
+}
+
+function onDisplayGameState(state, values)
+{
+    document.getElementById("connectionControls").style.display = "none";
+    if (state == "WaitStart")
+        ShowWaitingForStart(values);
+    else if (state == "WaitPlayers")
+        ShowWaitingForPlayers(values);
+    else
+        ShowRealGameState(state, values);
+}
+
+function JoinGame()
+{
+    var gameList = document.getElementById("gameListArea");
+    var gameIndex = gameList.selectedIndex;
+    if (! Game_IsConnected())
+        alert(_("Not connected"));
+    else if (! Game_CanJoin())
+        alert(_("Cannot join game while not fully connected or in game"));
+    else if (gameIndex < 0)
+        alert(_("No game selected"));
+    else {
+        clearGameState();
+        score = Score_Init();
+        Game_JoinGame(gameList.options[gameIndex].value, onDisplayGameState, onCantJoin);
+    }
+}
+
+function onConnectToLobby()
+{
+    document.getElementById("initialConnectionControls").style.display = "none";
+    document.getElementById("lobbyControls").style.display = "block";
+    document.getElementById("lobbyControls2").style.display = "block";
+    document.getElementById("lobbyControls3").style.display = "block";
+}
+
+function onDisconnectFromServer()
+{
+    document.getElementById("connectionControls").style.display = "block";
+    document.getElementById("initialConnectionControls").style.display = "block";
+    document.getElementById("lobbyControls").style.display = "none";
+    document.getElementById("lobbyControls2").style.display = "none";
+    document.getElementById("lobbyControls3").style.display = "none";
+    document.getElementById("waitGameStartOutput").style.display = "none";
+    document.getElementById("waitPlayerOutput").style.display = "none";
+    document.getElementById("mainGameOutput").style.display = "none";
+}
+
+function CreateGame()
+{
+    var gameTypeList = document.getElementById("gameTypeList");
+    var gameTypeIndex = gameTypeList.selectedIndex;
+    var inputGameName = document.getElementById("inputGameName");
+    if (! Game_IsConnected())
+        alert(_("Not connected"));
+    else if (! Game_CanJoin())
+        alert(_("Cannot create game while not fully connected or in game"));
+    else if (inputGameName.value == "")
+        alert(_("Enter game name"));
+    else if (gameTypeIndex < 0)
+        alert(_("No game type selected"));
+    else {
+        score = Score_Init();
+        Game_CreateGame(inputGameName.value,
+                        gameTypeList.options[gameTypeIndex].value,
+                        onDisplayGameState, onCantCreate);
+    }
+}
+
+function showOrderButtons()
+{
+    var spadeButton = document.getElementById("orderSpadeButton");
+    var clubButton = document.getElementById("orderClubButton");
+    var diamondButton = document.getElementById("orderDiamondButton");
+    var heartButton = document.getElementById("orderHeartButton");
+    var notrumpButton = document.getElementById("orderNoTrumpButton");
+
+    spadeButton.style.display = "block";
+    clubButton.style.display = "block";
+    diamondButton.style.display = "block";
+    heartButton.style.display = "block";
+    notrumpButton.style.display = "block";
+    
+    var totalWidth = spadeButton.clientWidth + clubButton.clientWidth +
+                        diamondButton.clientWidth + heartButton.clientWidth +
+                        notrumpButton.clientWidth + 4*borderSpacing;
+    var x = (canvasWidth-totalWidth)/2;
+    var y = canvasHeight - borderSpacing - cardHeight - 2*borderSpacing - spadeButton.clientHeight;
+    spadeButton.style.left = x;
+    spadeButton.style.top = y;
+    x += spadeButton.clientWidth + borderSpacing;
+    clubButton.style.left = x;
+    clubButton.style.top = y;
+    x += clubButton.clientWidth + borderSpacing;
+    diamondButton.style.left = x;
+    diamondButton.style.top = y;
+    x += diamondButton.clientWidth + borderSpacing;
+    heartButton.style.left = x;
+    heartButton.style.top = y;
+    x += heartButton.clientWidth + borderSpacing;
+    notrumpButton.style.left = x;
+    notrumpButton.style.top = y;
+    x += notrumpButton.clientWidth + borderSpacing;
+    
+}
+
+function hideOrderButtons()
+{
+    var spadeButton = document.getElementById("orderSpadeButton");
+    var clubButton = document.getElementById("orderClubButton");
+    var diamondButton = document.getElementById("orderDiamondButton");
+    var heartButton = document.getElementById("orderHeartButton");
+    var notrumpButton = document.getElementById("orderNoTrumpButton");
+    
+    spadeButton.style.display = "none";
+    clubButton.style.display = "none";
+    diamondButton.style.display = "none";
+    heartButton.style.display = "none";
+    notrumpButton.style.display = "none";
+}
+
+function onCardsMouseDown(event)
+{
+    if (maxRaisedCards == 0)
+        return;
+    
+    var canvas = document.getElementById("mainGameOutput");
+    var x = event.pageX - canvas.offsetLeft;
+    var y = event.pageY - canvas.offsetTop;
+
+    var clickedCard = Cards_GetCardAt(x, y);
+    if (clickedCard == null) return;
+    
+    // todo: move on behalf of the one who passed
+    if (Cards_ClickCard(clickedCard))
+        ShowRealGameState(lastGameState.state, lastGameState.values);
+}
+
+function setScore(area, value)
+{
+    var absPos = [-1, -1, -1];
+    absPos[POS_ME] = g_myPos;
+    absPos[POS_WEST] = g_westPos;
+    absPos[POS_EAST] = g_eastPos;
+
+    var parameter = null;
+    if ((area.parameter == "p") || (area.parameter == "g"))
+        parameter = area.parameter + absPos[area.index1];
+    else if (area.parameter == "v")
+        parameter = area.parameter + absPos[area.index1] + absPos[area.index2];
+
+    if (parameter)
+        Game_EditScore(parameter, value)
+}
+
+function onScoreMouseDown(event)
+{
+    var canvasContainer = document.getElementById("mainGameOutput");
+    var x = event.pageX - canvasContainer.offsetLeft;
+    var y = event.pageY - canvasContainer.offsetTop;
+
+    var area = Score_GetArea(x, y);
+    if (area) {
+        var canvas = document.getElementById("gameCanvas");
+        var ctx = canvas.getContext("2d");
+        Score_HighlightArea(ctx, score, canvasWidth, area);
+        var oldValue = Score_GetValue(score, area);s
+        var increment = window.prompt(g_enterValueIncrementText, 0);
+        if (increment) {
+            var incrementNum = parseInt(increment);
+            if (incrementNum != 0)
+                setScore(area, oldValue + incrementNum);
+        }
+        Score_ClearHighlight(ctx, score, canvasWidth);
+    }
+}
+
+function onMouseDown(event)
+{
+    if (scoreVisible)
+        onScoreMouseDown(event);
+    else
+        onCardsMouseDown(event);
+}
+
+function orderSpade()
+{
+    placeOrder("6s");
+}
+            
+function orderClub()
+{
+    placeOrder("6c");
+}
+            
+function orderDiamond()
+{
+    placeOrder("6d");
+}
+            
+function orderHeart()
+{
+    placeOrder("6h");
+}
+            
+function orderNoTrump()
+{
+    placeOrder("6n");
+}
+
+function placeOrder(order)
+{
+    var raisedCards = Cards_GetRaisedCards(POS_ME);
+    Game_ConfirmOrder(order, raisedCards[0].card, raisedCards[1].card);
+    Cards_ResetRaisedCards();
+}
+
+function makeMove()
+{
+    var raisedCards = Cards_GetRaisedCards(positionToMove);
+    if (raisedCards.length > 0) {
+        if (positionToMove == POS_ME)
+            Game_MakeMove(raisedCards[0].card);
+        else
+            Game_MakeMoveFor(playerToMove, raisedCards[0].card);
+    }
+    Cards_ResetRaisedCardsFor(positionToMove);
+}
+
+function openOrClose()
+{
+    if (!MyCardsOpen) {
+        Game_OpenCards();
+        MyCardsOpen = true;
+    } else {
+        Game_CloseCards();
+        MyCardsOpen = false;
+    }
+}
+
+function shareCards()
+{
+    Game_ShareCards();
+}
+
+function showScore()
+{
+    scoreOpen = true;
+    scoreVisible = true;
+
+    var canvas = document.getElementById("gameCanvas");
+    var ctx = canvas.getContext("2d");
+    Score_DrawScore(ctx, score, canvasWidth);
+    ShowCloseScoreButton();
+    document.getElementById("finishButton").style.display = "none";
+    document.getElementById("openButton").style.display = "none";
+    document.getElementById("shareButton").style.display = "none";
+    document.getElementById("scoreButton").style.display = "none";
+}
+
+function closeScore()
+{
+    scoreOpen = false;
+    scoreVisible = false;
+    ShowRealGameState(lastGameState.state, lastGameState.values);
+}
+            
+        </script>
+    </body>
+</html>
+    
